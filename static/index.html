@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GymGuard - Injury Prediction</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:     #080810;
+  --panel:  #0e0e18;
+  --border: #1c1c2e;
+  --green:  #00e676;
+  --yellow: #ffd600;
+  --red:    #ff1744;
+  --blue:   #448aff;
+  --accent: #ff3c3c;
+  --text:   #dcdcf0;
+  --muted:  #4a4a6a;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+}
+
+/* ===== HEADER but no head for ne though ===================================================== */
+#hdr {
+  height: 52px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  position: relative;
+  z-index: 10;
+}
+#hdr h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.6rem;
+  letter-spacing: 3px;
+  background: linear-gradient(90deg, #fff 55%, #ff3c3c);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.htag {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.55rem;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 2px 6px;
+  letter-spacing: 2px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.hright { display: flex; align-items: center; gap: 14px; }
+#fpsPill {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+#fpsPill.fast { color: var(--green); border-color: rgba(0,230,118,.35); }
+#fpsPill.ok   { color: var(--yellow); border-color: rgba(255,214,0,.35); }
+#fpsPill.slow { color: var(--red);   border-color: rgba(255,23,68,.35);  }
+.statusPill { display: flex; align-items: center; gap: 6px;
+  font-family: 'Space Mono', monospace; font-size: 0.6rem;
+  letter-spacing: 1px; color: var(--muted); }
+.sdot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.sdot.live { background: var(--green); box-shadow: 0 0 7px var(--green);
+  animation: blink 1.5s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+/* ===== BODY LAYOUT (maybe you can lay out ur body in me ) ================================ */
+#body {
+  /* fill remaining height */
+  height: calc(100vh - 52px);
+  display: flex;
+  flex-direction: row;
+}
+
+/* ===== LEFT COLUMN (video + history) ============================= */
+#left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+}
+
+/* video area: fills available space */
+#videoBox {
+  flex: 1;
+  min-height: 0;
+  background: #000;
+  position: relative;
+  overflow: hidden;
+}
+#feed {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: none;
+}
+#placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--muted);
+}
+#placeholder p { font-family: 'Space Mono', monospace; font-size: .7rem; letter-spacing: 2px; }
+
+/* alert bar over video flashing lightssssssssss*/
+#alertBar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  padding: 8px 14px;
+  font-family: 'Space Mono', monospace;
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transform: translateY(-100%);
+  transition: transform .3s;
+}
+#alertBar.warn   { background: rgba(255,214,0,.12);  border-bottom: 1px solid var(--yellow); color: var(--yellow); transform: translateY(0); }
+#alertBar.danger { background: rgba(255,23,68,.15);  border-bottom: 1px solid var(--red);    color: var(--red);    transform: translateY(0); }
+
+#exLabel {
+  position: absolute;
+  bottom: 12px; left: 12px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.3rem;
+  letter-spacing: 3px;
+  color: rgba(255,255,255,.6);
+  text-shadow: 0 2px 10px #000;
+}
+#gpuLabel {
+  position: absolute;
+  bottom: 12px; right: 12px;
+  font-family: 'Space Mono', monospace;
+  font-size: .58rem;
+  color: var(--green);
+  border: 1px solid rgba(0,230,118,.3);
+  padding: 3px 7px;
+  background: rgba(0,230,118,.04);
+  display: none;
+}
+
+/* history strip at bottom of left column */
+#historyBox {
+  height: 150px;
+  flex-shrink: 0;
+  background: #0a0a14;
+  border-top: 1px solid var(--border);
+  padding: 10px 14px 8px;
+  display: flex;
+  flex-direction: column;
+}
+.hrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.slabel {
+  font-family: 'Space Mono', monospace;
+  font-size: .52rem;
+  letter-spacing: 2.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.hbtns { display: flex; gap: 6px; }
+.hbtn {
+  font-family: 'Space Mono', monospace;
+  font-size: .52rem;
+  padding: 2px 7px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  border-radius: 2px;
+  letter-spacing: 1px;
+}
+.hbtn:hover { color: var(--text); border-color: var(--muted); }
+#histChart { flex: 1; display: block; width: 100%; }
+#exLegend {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.exdot {
+  font-family: 'Space Mono', monospace;
+  font-size: .5rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.exdot span {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+}
+
+/* ===== RIGHT SIDEBAR ============================================= */
+#sidebar {
+  width: 320px;
+  flex-shrink: 0;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+#sidebar::-webkit-scrollbar { width: 3px; }
+#sidebar::-webkit-scrollbar-thumb { background: var(--border); }
+
+.scard { padding: 16px 18px; border-bottom: 1px solid var(--border); }
+
+/* Gauge */
+.gaugeRow { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
+.gWrap { position: relative; width: 100px; height: 100px; flex-shrink: 0; }
+.gSvg { width: 100px; height: 100px; transform: rotate(-90deg); }
+.gTrack { fill: none; stroke: var(--border); stroke-width: 10; }
+.gFill  { fill: none; stroke: var(--green); stroke-width: 10; stroke-linecap: round;
+  stroke-dasharray: 251.3; stroke-dashoffset: 251.3;
+  transition: stroke-dashoffset .5s ease, stroke .5s; }
+.gCenter { position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; }
+.gNum { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: var(--green);
+  transition: color .5s; line-height: 1; }
+.gSub { font-family: 'Space Mono', monospace; font-size: .45rem;
+  color: var(--muted); letter-spacing: 1px; }
+.rLevel { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem;
+  letter-spacing: 3px; color: var(--green); transition: color .5s; }
+.rDesc  { font-size: .68rem; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+
+/* mini stats */
+.statRow { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; margin-top: 12px; }
+.statBox { background: rgba(255,255,255,.02); border: 1px solid var(--border);
+  padding: 7px 6px; border-radius: 3px; text-align: center; }
+.statV { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; }
+.statK { font-family: 'Space Mono', monospace; font-size: .48rem;
+  letter-spacing: 1px; color: var(--muted); margin-top: 2px; }
+
+/* issues */
+.issCard {
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  background: rgba(255,60,60,.04);
+  border-radius: 0 3px 3px 0;
+  margin-bottom: 7px;
+}
+.issName { font-family: 'Space Mono', monospace; font-size: .6rem;
+  font-weight: 700; letter-spacing: 1px; margin-bottom: 3px; }
+.issMsg  { font-size: .65rem; color: var(--muted); line-height: 1.45; }
+.sevBar  { margin-top: 6px; height: 2px; background: var(--border); overflow: hidden; }
+.sevFill { height: 100%; background: linear-gradient(90deg, var(--yellow), var(--red)); }
+.okMsg   { font-family: 'Space Mono', monospace; font-size: .65rem;
+  color: var(--green); padding: 6px 0; }
+
+/* angles */
+.angleGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+.angleItem { background: rgba(255,255,255,.02); border: 1px solid var(--border);
+  padding: 8px 10px; border-radius: 3px; }
+.angleKey { font-family: 'Space Mono', monospace; font-size: .48rem;
+  letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
+.angleVal { font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem; }
+.angleVal small { font-size: .6rem; color: var(--muted); font-family: 'Space Mono', monospace; }
+
+/* start/stop button */
+.btnWrap { padding: 16px 18px; margin-top: auto; }
+#mainBtn {
+  display: block;
+  width: 100%;
+  padding: 13px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem;
+  letter-spacing: 4px;
+  cursor: pointer;
+  transition: all .2s;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+}
+#mainBtn:hover:not(:disabled) { background: #ff6565; }
+#mainBtn:disabled { background: var(--border); color: var(--muted); cursor: default; clip-path: none; }
+#mainBtn.stop { background: transparent; border: 1px solid var(--muted); color: var(--muted); clip-path: none; }
+#mainBtn.stop:hover { border-color: var(--text); color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="hdr">
+  <div style="display:flex;align-items:center">
+    <h1>GYMGUARD</h1>
+    <span class="htag">v2 GPU</span>
+  </div>
+  <div class="hright">
+    <div id="fpsPill">-- FPS</div>
+    <div class="statusPill">
+      <div class="sdot" id="sdot"></div>
+      <span id="sTxt">OFFLINE</span>
+    </div>
+  </div>
+</div>
+
+<!-- BODY -->
+<div id="body">
+
+  <!-- LEFT: video + history -->
+  <div id="left">
+    <div id="videoBox">
+      <div id="alertBar"></div>
+      <div id="placeholder">
+        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".25">
+          <rect x="2" y="7" width="20" height="14" rx="2"/>
+          <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/>
+          <circle cx="12" cy="13" r="3"/>
+        </svg>
+        <p>PRESS START ANALYSIS</p>
+      </div>
+      <img id="feed" alt=""/>
+      <div id="exLabel"></div>
+      <div id="gpuLabel">RTX 3050 - CUDA - FP16</div>
+    </div>
+
+    <div id="historyBox">
+      <div class="hrow">
+        <span class="slabel">RISK HISTORY - LAST 60 SECONDS</span>
+        <div class="hbtns">
+          <button class="hbtn" onclick="clearHistory()">CLEAR</button>
+          <button class="hbtn" onclick="exportCSV()">EXPORT CSV</button>
+        </div>
+      </div>
+      <canvas id="histChart"></canvas>
+      <div id="exLegend"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: sidebar -->
+  <div id="sidebar">
+
+    <!-- Risk gauge card -->
+    <div class="scard">
+      <div class="slabel">INJURY RISK SCORE</div>
+      <div class="gaugeRow">
+        <div class="gWrap">
+          <svg class="gSvg" viewBox="0 0 100 100">
+            <circle class="gTrack" cx="50" cy="50" r="40"/>
+            <circle class="gFill"  cx="50" cy="50" r="40" id="gFill"/>
+          </svg>
+          <div class="gCenter">
+            <div class="gNum" id="gNum">0</div>
+            <div class="gSub">/100</div>
+          </div>
+        </div>
+        <div>
+          <div class="rLevel" id="rLevel">AWAITING</div>
+          <div class="rDesc"  id="rDesc">Start analysis to begin scoring.</div>
+        </div>
+      </div>
+      <div class="statRow">
+        <div class="statBox"><div class="statV" id="sAvg">--</div><div class="statK">AVG RISK</div></div>
+        <div class="statBox"><div class="statV" id="sPeak">--</div><div class="statK">PEAK</div></div>
+        <div class="statBox"><div class="statV" id="sTime">0s</div><div class="statK">SESSION</div></div>
+      </div>
+    </div>
+
+    <!-- Issues card -->
+    <div class="scard">
+      <div class="slabel">FORM ISSUES</div>
+      <div id="issuesList" style="margin-top:10px">
+        <div class="okMsg">&#10003; No issues -- awaiting analysis</div>
+      </div>
+    </div>
+
+    <!-- Angles card -->
+    <div class="scard">
+      <div class="slabel">JOINT ANGLES</div>
+      <div class="angleGrid" id="angleGrid">
+        <div class="angleItem">
+          <div class="angleKey">AWAITING</div>
+          <div class="angleVal">--</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btnWrap">
+      <button id="mainBtn" onclick="startStream()">START ANALYSIS</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// -- State --------------------------------------------------------------------
+let ws = null, sessionStart = null, sessionTimer = null;
+let frameCount = 0, lastFpsAt = Date.now();
+const HIST = [], HIST_MAX = 120;
+const CIRC = 2 * Math.PI * 40; // r=40 => ~251.3
+
+const EX_COL = {
+  'Squat':          '#448aff',
+  'Deadlift':       '#aa00ff',
+  'Bench Press':    '#ff6d00',
+  'Lunge':          '#00bcd4',
+  'Bicep Curl':     '#76ff03',
+  'Overhead Press': '#ff4081',
+  'Standing':       '#78909c',
+  'Detecting...':   '#37474f',
+  'No person detected': '#263238',
+};
+const ANG_LABEL = {
+  left_knee:'L KNEE', right_knee:'R KNEE', left_elbow:'L ELBOW', right_elbow:'R ELBOW',
+  spine:'SPINE', hip_hinge:'HIP', neck_offset:'NECK', L_elbow_flare:'L FLARE',
+  R_elbow_flare:'R FLARE', left_curl:'L CURL', right_curl:'R CURL',
+};
+
+// -- WebSocket ----------------------------------------------------------------
+function startStream() {
+  const btn = document.getElementById('mainBtn');
+  btn.textContent = 'CONNECTING...'; btn.disabled = true;
+
+  ws = new WebSocket('ws://' + location.host + '/ws');
+
+  ws.onopen = function() {
+    setStatus('LIVE', true);
+    document.getElementById('placeholder').style.display = 'none';
+    document.getElementById('feed').style.display = 'block';
+    document.getElementById('gpuLabel').style.display = 'block';
+    btn.textContent = 'STOP'; btn.className = 'stop'; btn.disabled = false;
+    btn.onclick = stopStream;
+    sessionStart = Date.now();
+    sessionTimer = setInterval(tickTimer, 1000);
+  };
+
+  ws.onmessage = function(e) {
+    var d = JSON.parse(e.data);
+    document.getElementById('feed').src = 'data:image/jpeg;base64,' + d.frame;
+    updateAnalysis(d.analysis);
+    pushHistory(d.analysis);
+    tickFPS();
+  };
+
+  ws.onclose = ws.onerror = function() {
+    setStatus('OFFLINE', false);
+    resetUI();
+    clearInterval(sessionTimer);
+    saveSession();
+  };
+}
+
+function stopStream() {
+  if (ws) { ws.close(); ws = null; }
+}
+
+// -- Analysis -----------------------------------------------------------------
+function updateAnalysis(a) {
+  var score = a.risk_score || 0;
+  updateGauge(score);
+  updateIssues(a.issues || []);
+  updateAngles(a.angles || {});
+  updateAlert(score, a.issues || []);
+  updateStats();
+  document.getElementById('exLabel').textContent = a.exercise_detected || '';
+}
+
+function updateGauge(score) {
+  var fill  = document.getElementById('gFill');
+  var num   = document.getElementById('gNum');
+  var level = document.getElementById('rLevel');
+  var desc  = document.getElementById('rDesc');
+
+  fill.style.strokeDashoffset = CIRC - (score / 100) * CIRC;
+  num.textContent = score;
+
+  var col, lv, dv;
+  if (score < 30) {
+    col = '#00e676'; lv = 'SAFE';
+    dv = score === 0 ? 'Form looks good -- keep it up.' : 'Minor adjustments may help.';
+  } else if (score < 65) {
+    col = '#ffd600'; lv = 'WARNING';
+    dv = 'Form deviations detected. Reduce load or correct posture.';
+  } else {
+    col = '#ff1744'; lv = 'HIGH RISK';
+    dv = 'Stop and correct your form to prevent injury.';
+  }
+
+  fill.style.stroke = col;
+  num.style.color   = col;
+  level.style.color = col;
+  level.textContent = lv;
+  desc.textContent  = dv;
+}
+
+function updateIssues(issues) {
+  var list = document.getElementById('issuesList');
+  if (!issues.length) {
+    list.innerHTML = '<div class="okMsg">&#10003; No issues detected -- good form</div>';
+    return;
+  }
+  list.innerHTML = issues.map(function(i) {
+    return '<div class="issCard">' +
+      '<div class="issName">' + i.name + '</div>' +
+      '<div class="issMsg">'  + i.message + '</div>' +
+      '<div class="sevBar"><div class="sevFill" style="width:' + Math.round(i.severity * 100) + '%"></div></div>' +
+      '</div>';
+  }).join('');
+}
+
+function updateAngles(angles) {
+  var grid = document.getElementById('angleGrid');
+  var entries = Object.entries(angles);
+  if (!entries.length) {
+    grid.innerHTML = '<div class="angleItem"><div class="angleKey">AWAITING</div><div class="angleVal">--</div></div>';
+    return;
+  }
+  grid.innerHTML = entries.slice(0, 6).map(function(kv) {
+    return '<div class="angleItem">' +
+      '<div class="angleKey">' + (ANG_LABEL[kv[0]] || kv[0].toUpperCase()) + '</div>' +
+      '<div class="angleVal">' + Math.round(kv[1]) + '<small>&deg;</small></div>' +
+      '</div>';
+  }).join('');
+}
+
+function updateAlert(score, issues) {
+  var bar = document.getElementById('alertBar');
+  if (score >= 65 && issues.length) {
+    bar.className = 'danger';
+    bar.textContent = '! ' + issues[0].name.toUpperCase() + ' -- ' + issues[0].message;
+  } else if (score >= 30 && issues.length) {
+    bar.className = 'warn';
+    bar.textContent = issues[0].name + ' -- Check your form';
+  } else {
+    bar.className = '';
+    bar.textContent = '';
+  }
+}
+
+function updateStats() {
+  if (!HIST.length) return;
+  var scores = HIST.map(function(h) { return h.score; });
+  var avg  = Math.round(scores.reduce(function(a, b) { return a + b; }, 0) / scores.length);
+  var peak = Math.max.apply(null, scores);
+  document.getElementById('sAvg').textContent  = avg;
+  document.getElementById('sPeak').textContent = peak;
+}
+
+// -- History Chart -------------------------------------------------------------
+function pushHistory(a) {
+  HIST.push({ ts: Date.now(), score: a.risk_score || 0, exercise: a.exercise_detected || '' });
+  if (HIST.length > HIST_MAX) HIST.shift();
+  drawChart();
+  updateLegend();
+}
+
+function drawChart() {
+  var canvas = document.getElementById('histChart');
+  var ctx    = canvas.getContext('2d');
+  var dpr    = window.devicePixelRatio || 1;
+  var W      = canvas.clientWidth;
+  var H      = canvas.clientHeight;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+  if (!HIST.length || H <= 0) return;
+
+  // grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 1;
+  [25, 50, 65, 100].forEach(function(v) {
+    var y = H - (v / 100) * H;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.18)';
+    ctx.font = '9px Space Mono, monospace';
+    ctx.fillText(v, 3, y - 2);
+  });
+
+  var xStep = W / Math.max(HIST_MAX - 1, 1);
+
+  // area under line
+  ctx.beginPath();
+  HIST.forEach(function(h, i) {
+    var x = i * xStep, y = H - (h.score / 100) * H;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.lineTo((HIST.length - 1) * xStep, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
+  var ag = ctx.createLinearGradient(0, 0, 0, H);
+  ag.addColorStop(0, 'rgba(68,138,255,.35)');
+  ag.addColorStop(1, 'rgba(68,138,255,0)');
+  ctx.fillStyle = ag;
+  ctx.fill();
+
+  // score line
+  ctx.beginPath();
+  ctx.strokeStyle = '#448aff';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  HIST.forEach(function(h, i) {
+    var x = i * xStep, y = H - (h.score / 100) * H;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // exercise color bar at bottom
+  HIST.forEach(function(h, i) {
+    ctx.fillStyle = EX_COL[h.exercise] || '#607d8b';
+    ctx.fillRect(i * xStep, H - 4, xStep + 1, 4);
+  });
+
+  // current score dot
+  var last = HIST[HIST.length - 1];
+  var lx = (HIST.length - 1) * xStep;
+  var ly = H - (last.score / 100) * H;
+  ctx.beginPath();
+  ctx.arc(lx, ly, 4, 0, Math.PI * 2);
+  ctx.fillStyle = scoreCol(last.score);
+  ctx.fill();
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+function scoreCol(s) {
+  return s < 30 ? '#00e676' : s < 65 ? '#ffd600' : '#ff1744';
+}
+
+function updateLegend() {
+  var seen = {};
+  HIST.forEach(function(h) { if (h.exercise) seen[h.exercise] = true; });
+  document.getElementById('exLegend').innerHTML = Object.keys(seen).map(function(ex) {
+    return '<div class="exdot"><span style="background:' + (EX_COL[ex] || '#607d8b') + '"></span>' + ex + '</div>';
+  }).join('');
+}
+
+function clearHistory() {
+  HIST.length = 0;
+  var canvas = document.getElementById('histChart');
+  var ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  document.getElementById('exLegend').innerHTML = '';
+  document.getElementById('sAvg').textContent  = '--';
+  document.getElementById('sPeak').textContent = '--';
+}
+
+function exportCSV() {
+  if (!HIST.length) { alert('No data yet.'); return; }
+  var csv = 'Timestamp,Score,Exercise\n';
+  HIST.forEach(function(h) {
+    csv += new Date(h.ts).toISOString() + ',' + h.score + ',"' + h.exercise + '"\n';
+  });
+  var a = document.createElement('a');
+  a.href = 'data:text/csv,' + encodeURIComponent(csv);
+  a.download = 'gymguard_' + Date.now() + '.csv';
+  a.click();
+}
+
+// -- Persistence ---------------------------------------------------------------
+function saveSession() {
+  if (!HIST.length) return;
+  try {
+    var sessions = JSON.parse(localStorage.getItem('gg_sessions') || '[]');
+    var scores = HIST.map(function(h) { return h.score; });
+    sessions.push({
+      date: new Date().toLocaleString(),
+      avg: Math.round(scores.reduce(function(a,b){return a+b;},0)/scores.length),
+      peak: Math.max.apply(null, scores),
+      dur: sessionStart ? Math.floor((Date.now()-sessionStart)/1000) : 0,
+    });
+    if (sessions.length > 50) sessions.shift();
+    localStorage.setItem('gg_sessions', JSON.stringify(sessions));
+  } catch(e) {}
+}
+
+// -- Helpers -------------------------------------------------------------------
+function tickFPS() {
+  frameCount++;
+  var now = Date.now();
+  if (now - lastFpsAt >= 1000) {
+    var fps = frameCount;
+    frameCount = 0; lastFpsAt = now;
+    var pill = document.getElementById('fpsPill');
+    pill.textContent = fps + ' FPS';
+    pill.className = fps >= 22 ? 'fast' : fps >= 13 ? 'ok' : 'slow';
+  }
+}
+
+function tickTimer() {
+  if (!sessionStart) return;
+  var s = Math.floor((Date.now() - sessionStart) / 1000);
+  var m = Math.floor(s / 60);
+  document.getElementById('sTime').textContent = m > 0 ? m + 'm' + (s%60) + 's' : s + 's';
+}
+
+function setStatus(txt, live) {
+  document.getElementById('sTxt').textContent = txt;
+  document.getElementById('sdot').className = live ? 'sdot live' : 'sdot';
+}
+
+function resetUI() {
+  var btn = document.getElementById('mainBtn');
+  btn.textContent = 'START ANALYSIS';
+  btn.className = '';
+  btn.disabled = false;
+  btn.onclick = startStream;
+  document.getElementById('feed').style.display = 'none';
+  document.getElementById('placeholder').style.display = 'flex';
+  document.getElementById('gpuLabel').style.display = 'none';
+  document.getElementById('exLabel').textContent = '';
+  document.getElementById('alertBar').className = '';
+  document.getElementById('alertBar').textContent = '';
+  document.getElementById('fpsPill').textContent = '-- FPS';
+  document.getElementById('fpsPill').className = '';
+}
+
+window.addEventListener('resize', function() { if (HIST.length) drawChart(); });
+</script>
+</body>
+</html>

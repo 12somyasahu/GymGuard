@@ -1,0 +1,15 @@
+# GymGuard - GPU Injury Prediction
+# Install order matters!
+
+# 1. PyTorch with CUDA 12.1 (compatible with your CUDA 12.9 driver)
+# Run this command first:
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# 2. Then install the rest:
+ultralytics>=8.0.0        # YOLOv8 (auto-downloads yolov8n-pose.pt on first run)
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+opencv-python>=4.9.0
+numpy>=1.24.0
+websockets>=12.0
+python-multipart>=0.0.9
