@@ -3,7 +3,7 @@ import numpy as np
 from pathlib import Path
 from pose.utils import angle_between, make_kp_func
 
-# Load classifier if available
+# Load classifier if availabl
 _clf = None
 _le  = None
 _MODEL_PATH = Path("models/exercise_classifier.pkl")
