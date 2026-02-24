@@ -64,7 +64,7 @@ It detects bad form before it becomes an injury.
 
 ### 1. Clone the repo
 ```bash
-git clone https://github.com/yourusername/gymguard.git
+git clone https://github.com/12somyasahu/gymguard.git
 cd gymguard
 ```
 
