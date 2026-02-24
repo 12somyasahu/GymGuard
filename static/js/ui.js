@@ -12,6 +12,24 @@ var ANG_LABEL = {
   right_curl:     'R CURL',
 };
 
+// ── Voice Alerts ─────────────────────────────────────────────────────────────
+var _lastSpoken   = '';
+var _lastSpokenAt = 0;
+
+function speak(msg) {
+  var now = Date.now();
+  if (msg === _lastSpoken && now - _lastSpokenAt < 5000) return;
+  _lastSpoken   = msg;
+  _lastSpokenAt = now;
+  var utterance    = new SpeechSynthesisUtterance(msg);
+  utterance.rate   = 1;
+  utterance.volume = 1;
+  utterance.pitch  = 1;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
+}
+
+// ── Main update ───────────────────────────────────────────────────────────────
 function updateAnalysis(a) {
   var score = a.risk_score || 0;
   updateGauge(score);
@@ -86,15 +104,21 @@ function updateAngles(angles) {
 
 function updateAlert(score, issues) {
   var bar = document.getElementById('alertBar');
+
   if (score >= 65 && issues.length) {
     bar.className   = 'danger';
     bar.textContent = '! ' + issues[0].name.toUpperCase() + ' -- ' + issues[0].message;
+    speak('Warning. ' + issues[0].name + '. ' + issues[0].message);
+
   } else if (score >= 30 && issues.length) {
     bar.className   = 'warn';
     bar.textContent = issues[0].name + ' -- Check your form';
+    speak('Check your form. ' + issues[0].name);
+
   } else {
     bar.className   = '';
     bar.textContent = '';
+    _lastSpoken     = '';
   }
 }
 
