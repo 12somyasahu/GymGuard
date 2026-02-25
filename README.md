@@ -167,15 +167,31 @@ FastAPI WebSocket --> Browser Dashboard
 
 Tested on **NVIDIA GeForce RTX 3050 Laptop (6GB VRAM)**:
 
-| Model | FPS | Accuracy |
-|---|---|---|
-| yolov8n-pose | ~28 FPS | Good |
-| yolov8m-pose | ~20 FPS | Better |
-| yolov8l-pose | ~12 FPS | Best |
+## Compatibility
 
-To swap models, change this line in `main.py`:
+| Hardware | FPS | Notes |
+|---|---|---|
+| NVIDIA RTX 3050+ | 20-25 FPS | Recommended |
+| NVIDIA GTX 1060+ | 15-20 FPS | Good |
+| CPU only | 5-8 FPS | Works, not smooth |
+| AMD GPU | 5-8 FPS | Falls back to CPU |
+| Intel integrated | 3-5 FPS | Usable |
+
+## Model Options
+
+Swap the model in `pose/detector.py` based on your hardware:
+
+| Model | Speed | Accuracy | Best For |
+|---|---|---|---|
+| yolov8n-pose.pt | Fastest | Good | CPU / weak GPU |
+| yolov8s-pose.pt | Fast | Better | GTX 1060 class |
+| yolov8m-pose.pt | Balanced | Great | RTX 3050 (default) |
+| yolov8l-pose.pt | Slow | Best | RTX 3080+ |
+| yolov8x-pose.pt | Slowest | Maximum | RTX 4090 |
+
+Change this line in `pose/detector.py`:
 ```python
-model = YOLO("yolov8m-pose.pt")  # change to yolov8n-pose.pt or yolov8l-pose.pt
+model = YOLO("yolov8m-pose.pt")  # change model here
 ```
 
 ---
@@ -189,15 +205,38 @@ model = YOLO("yolov8m-pose.pt")  # change to yolov8n-pose.pt or yolov8l-pose.pt
 - [ ] Mobile responsive layout
 - [ ] Custom trained model on gym-specific dataset (not just COCO)
 - [ ] Export session report as PDF
-
+ 
 ---
 
+## Voice Alerts
+
+GymGuard speaks out loud when it detects form issues, so you don't have to look at the screen mid-workout.
+
+| Risk Level | What It Says |
+|---|---|
+| WARNING (30-64) | "Check your form. [Issue name]" |
+| HIGH RISK (65+) | "Warning. [Issue name]. [Full message]" |
+| SAFE | Silent |
+
+- Built using the browser's native Web Speech API — no external libraries or API keys needed
+- 5 second cooldown between alerts so it doesn't repeat every frame
+- Works in Chrome, Edge, and Firefox
+- Volume and voice depend on your system settings
+
+To adjust the cooldown, open `static/js/ui.js` and change:
+```javascript
+if (msg === _lastSpoken && now - _lastSpokenAt < 5000) return;
+//                                                ^ change this (milliseconds)
+```
+```
+
+----
 ## Contributing
 
 Pull requests are welcome. If you want to add a new exercise analyzer, create a file in `analyzers/` following the same pattern as the existing ones and wire it into `main.py`.
 
 ---
-
+  
 ## License
 
 MIT — do whatever you want with it.
