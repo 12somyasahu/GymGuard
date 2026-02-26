@@ -36,15 +36,28 @@
         </svg>
         <p>PRESS START ANALYSIS</p>
       </div>
-      <img id="feed" alt="" src="/static/demo1.png" style="display:block"/>
+      <img id="feed" alt=""/>
       <div id="exLabel"></div>
       <div id="gpuLabel">RTX 3050 - CUDA</div>
+
+      <!-- Video progress overlay -->
+      <div id="videoProgress" style="display:none; position:absolute; bottom:0; left:0; right:0;
+           background:rgba(0,0,0,.7); padding:10px 14px;">
+        <div style="font-family:'Space Mono',monospace; font-size:.6rem; color:#fff; letter-spacing:1px; margin-bottom:6px;">
+          ANALYZING VIDEO -- <span id="progressTxt">0 frames</span>
+        </div>
+        <div style="height:3px; background:#1c1c2e; border-radius:2px;">
+          <div id="progressBar" style="height:100%; background:#448aff; border-radius:2px; width:0%; transition:width .2s;"></div>
+        </div>
+      </div>
     </div>
 
     <div id="historyBox">
       <div class="hrow">
         <span class="slabel">RISK HISTORY - LAST 60 SECONDS</span>
         <div class="hbtns">
+          <input type="file" id="vidInput" accept="video/*" style="display:none" onchange="analyzeVideo(this)"/>
+          <button class="hbtn" onclick="document.getElementById('vidInput').click()">LOAD VIDEO</button>
           <button class="hbtn" onclick="clearHistory()">CLEAR</button>
           <button class="hbtn" onclick="exportCSV()">EXPORT CSV</button>
         </div>

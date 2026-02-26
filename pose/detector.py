@@ -20,21 +20,33 @@ except Exception as e:
     print(f"[WARN] YOLOv8 not available: {e}")
     YOLO_AVAILABLE = False
     DEVICE = "cpu"
-    model = None
+    model  = None
 
 
 def run_inference(frame):
-    """
-    Returns numpy keypoints array for first detected person, or None.
-    """
     if not YOLO_AVAILABLE:
         return None
 
     results = model(frame, verbose=False, device=DEVICE, conf=0.25)
 
     if results and results[0].keypoints is not None:
-        kps = results[0].keypoints.data
-        if len(kps) > 0:
+        kps   = results[0].keypoints.data
+        boxes = results[0].boxes
+
+        if len(kps) == 0:
+            return None
+
+        if len(kps) == 1:
             return kps[0].cpu().numpy()
+
+        # Multiple people -- pick largest bounding box (main subject)
+        areas = []
+        for box in boxes.xyxy:
+            w = float(box[2]) - float(box[0])
+            h = float(box[3]) - float(box[1])
+            areas.append(w * h)
+
+        best_idx = areas.index(max(areas))
+        return kps[best_idx].cpu().numpy()
 
     return None

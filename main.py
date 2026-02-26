@@ -3,16 +3,79 @@ import base64
 import asyncio
 import json
 import time
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+import numpy as np
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from pathlib import Path
+import tempfile
+import os
 
 from pose.detector import run_inference, YOLO_AVAILABLE
 from pose.drawing import draw_skeleton
 from pose.analyzers.base import analyze_posture
 
 app = FastAPI(title="GymGuard")
+
+@app.post("/analyze-image")
+async def analyze_image(file: UploadFile = File(...)):
+    contents  = await file.read()
+    nparr     = np.frombuffer(contents, np.uint8)
+    frame     = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    kp = run_inference(frame)
+    if kp is not None:
+        analysis = analyze_posture(kp)
+        frame    = draw_skeleton(frame, kp, analysis["risk_score"])
+    else:
+        analysis = {"issues": [], "angles": {}, "risk_score": 0, "exercise_detected": "No person detected"}
+
+    _, buf    = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
+    frame_b64 = base64.b64encode(buf).decode("utf-8")
+    return {"frame": frame_b64, "analysis": analysis}
+
+
+@app.post("/analyze-video")
+async def analyze_video(file: UploadFile = File(...)):
+    # Save uploaded video to temp file
+    suffix = Path(file.filename).suffix or ".mp4"
+    tmp    = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    tmp.write(await file.read())
+    tmp.close()
+
+    def generate():
+        cap = cv2.VideoCapture(tmp.name)
+        frame_idx = 0
+
+        try:
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                frame_idx += 1
+                if frame_idx % 3 != 0:   # process every 3rd frame
+                    continue
+
+                kp = run_inference(frame)
+                if kp is not None:
+                    analysis = analyze_posture(kp)
+                    frame    = draw_skeleton(frame, kp, analysis["risk_score"])
+                else:
+                    analysis = {"issues": [], "angles": {}, "risk_score": 0, "exercise_detected": "No person detected"}
+
+                _, buf    = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                frame_b64 = base64.b64encode(buf).decode("utf-8")
+
+                payload = json.dumps({"frame": frame_b64, "analysis": analysis}) + "\n"
+                yield payload.encode("utf-8")
+
+        finally:
+            cap.release()
+            os.unlink(tmp.name)
+
+    return StreamingResponse(generate(), media_type="application/x-ndjson")
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -66,6 +129,7 @@ async def websocket_endpoint(websocket: WebSocket):
         print(f"[ERROR] {e}")
     finally:
         cap.release()
+
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
