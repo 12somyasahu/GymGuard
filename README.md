@@ -14,11 +14,11 @@
 
 **Squat Analysis — High Risk Detection**
 
-[![GymGuard Squat Demo](https://img.youtube.com/vi/SY6qPIMuxUY/0.jpg)](https://www.youtube.com/watch?v=SY6qPIMuxUY)
+[![GymGuard Deadlift Demo](https://img.youtube.com/vi/SY6qPIMuxUY/0.jpg)](https://www.youtube.com/watch?v=SY6qPIMuxUY)
 
 **Deadlift Analysis — Multi Person Tracking**
 
-[![GymGuard Deadlift Demo](https://img.youtube.com/vi/hUOKURaIfLQ/0.jpg)](https://www.youtube.com/watch?v=hUOKURaIfLQ)
+[![GymGuard Squat Demo](https://img.youtube.com/vi/hUOKURaIfLQ/0.jpg)](https://www.youtube.com/watch?v=hUOKURaIfLQ)
 
 ---
 
