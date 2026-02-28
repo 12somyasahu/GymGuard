@@ -11,6 +11,7 @@
 ---
 
 ## Demo
+<img width="1887" height="903" alt="Screenshot 2026-02-26 002429" src="https://github.com/user-attachments/assets/0356b530-6845-4f29-a340-c0afd03d05ee" />
 
 **Deadlift Analysis — Multi Person Tracking**
 
