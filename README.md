@@ -26,7 +26,7 @@
 
 ## What It Does
 
-GymGuard watches your workout through your webcam in real time, tracks 17 body keypoints using YOLOv8-Pose on your GPU, and scores your injury risk from 0 to 100 based on your joint angles and posture. It detects bad form before it becomes an injury.
+GymGuard watches your workout through your webcam in real time, tracks 17 body keypoints using YOLOv8-Pose on your GPU, and scores your injury risk from 0 to 100 based on your joint angles and posture. It detects bad form before it becomes an injury. 
 
 ---
 
